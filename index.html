@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bạn Đồng Hành Giao Thông Việt Nam - Nhận diện Biển Báo & Vạch Kẻ Đường</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": { "@google/genai": "https://esm.run/@google/genai" } }
+</script>
+</head>
+<body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen">
+
+<header class="bg-emerald-600 text-white sticky top-0 z-40 shadow-md">
+  <div class="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('ai')">
+      <div class="bg-white p-2 rounded-xl text-emerald-600 shadow-sm"><i data-lucide="shield-alert" class="w-6 h-6"></i></div>
+      <div>
+        <h1 class="font-bold text-lg leading-tight">Bạn Đồng Hành Giao Thông</h1>
+        <p class="text-xs text-emerald-100 hidden sm:block">Trợ lý nhận diện biển báo &amp; vạch kẻ đường thông minh</p>
+      </div>
+    </div>
+    <button onclick="toggleApiKeyModal()" class="flex items-center gap-1.5 text-xs bg-emerald-700 hover:bg-emerald-800 text-emerald-100 px-3 py-1.5 rounded-lg transition-colors border border-emerald-500/30">
+      <i data-lucide="key" class="w-3.5 h-3.5"></i><span id="apiKeyStatusText">Cấu hình API Key</span>
+    </button>
+  </div>
+  <div class="bg-emerald-700/80 backdrop-blur border-t border-emerald-600/50">
+    <div class="max-w-6xl mx-auto px-4 flex overflow-x-auto no-scrollbar">
+      <button onclick="switchTab('ai')" id="tab-ai" class="tab-button active py-2.5 px-4 font-medium text-sm flex items-center gap-2 border-b-2 whitespace-nowrap transition-all"><i data-lucide="camera" class="w-4 h-4"></i> Nhận diện AI</button>
+      <button onclick="switchTab('lookup')" id="tab-lookup" class="tab-button py-2.5 px-4 font-medium text-sm flex items-center gap-2 border-b-2 whitespace-nowrap transition-all"><i data-lucide="search" class="w-4 h-4"></i> Tra cứu Biển báo</button>
+      <button onclick="switchTab('scenarios')" id="tab-scenarios" class="tab-button py-2.5 px-4 font-medium text-sm flex items-center gap-2 border-b-2 whitespace-nowrap transition-all"><i data-lucide="book-open" class="w-4 h-4"></i> Tình huống thực tế</button>
+    </div>
+  </div>
+</header>
+
+<main class="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6">
+  <section id="section-ai" class="tab-content block space-y-6">
+    <div class="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+      <div class="relative z-10 max-w-2xl">
+        <span class="bg-emerald-500/30 text-emerald-100 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-400/20 mb-3 inline-block">Trợ lý Giao Thông 24/7</span>
+        <h2 class="text-2xl md:text-3xl font-extrabold mb-2">Bạn gặp biển báo lạ hay vạch kẻ khó hiểu?</h2>
+        <p class="text-emerald-100 text-sm md:text-base mb-4 leading-relaxed">Chụp ảnh hoặc chọn hình ảnh có sẵn, trợ lý giao thông sẽ giải thích ngay cho bạn một cách thân thiện và dễ hiểu nhất!</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+      <div class="md:col-span-6 flex flex-col">
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex-1 flex flex-col">
+          <h3 class="font-bold text-slate-800 text-base mb-4 flex items-center gap-2"><i data-lucide="image" class="w-5 h-5 text-emerald-600"></i> Chọn hình ảnh kiểm tra</h3>
+          <div id="dropZone" class="relative border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-4 transition-all text-center flex-1 flex flex-col items-center justify-center bg-slate-50 min-h-[260px] overflow-hidden group">
+            <video id="webcam" class="hidden absolute inset-0 w-full h-full object-cover rounded-lg" autoplay playsinline></video>
+            <img id="imagePreview" class="hidden max-h-64 rounded-lg object-contain shadow-md mb-2 z-10" alt="Ảnh xem trước" />
+            <div id="uploadPlaceholder" class="space-y-3 p-4">
+              <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform"><i data-lucide="upload-cloud" class="w-7 h-7"></i></div>
+              <div><p class="text-slate-700 font-semibold text-sm">Kéo thả ảnh vào đây</p><p class="text-slate-400 text-xs mt-1">Hỗ trợ JPG, PNG, WEBP — hoặc bấm nút bên dưới</p></div>
+            </div>
+            <div id="loadingOverlay" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-20 space-y-3">
+              <div class="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+              <p class="text-sm font-semibold text-slate-700 animate-pulse">Bạn đồng hành đang phân tích...</p>
+            </div>
+          </div>
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <input type="file" id="fileInput" accept="image/*" class="hidden">
+            <button onclick="document.getElementById('fileInput').click()" class="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-4 rounded-xl text-sm transition-colors"><i data-lucide="upload" class="w-4 h-4"></i> Tải ảnh lên</button>
+            <button onclick="toggleCamera()" class="flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold py-2.5 px-4 rounded-xl text-sm transition-colors border border-emerald-200"><i data-lucide="camera" class="w-4 h-4"></i> <span id="cameraBtnText">Mở Camera</span></button>
+          </div>
+          <button id="captureBtn" onclick="captureAndAnalyze()" class="hidden w-full mt-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2"><i data-lucide="aperture" class="w-4 h-4"></i> Chụp ảnh &amp; Phân tích</button>
+        </div>
+      </div>
+      <div class="md:col-span-6 flex flex-col">
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex-1 flex flex-col">
+          <h3 class="font-bold text-slate-800 text-base mb-4 flex items-center gap-2"><i data-lucide="sparkles" class="w-5 h-5 text-amber-500"></i> Hướng dẫn từ Bạn Đồng Hành</h3>
+          <div id="resultBox" class="flex-1 flex flex-col justify-center items-center text-center p-6 text-slate-400 border border-slate-100 rounded-xl bg-slate-50/50">
+            <i data-lucide="compass" class="w-12 h-12 stroke-1 mb-2 text-slate-300"></i>
+            <p class="text-sm">Hãy chụp ảnh hoặc tải hình biển báo / vạch kẻ đường lên để mình trợ giúp nhé!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="section-lookup" class="tab-content hidden space-y-6">
+    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+      <div class="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center">
+        <div class="relative flex-1">
+          <i data-lucide="search" class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input type="text" id="searchInput" placeholder="Nhập tên biển báo (VD: cấm rẽ, tốc độ, cấm dừng...)..." class="w-full pl-11 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+        </div>
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+          <button onclick="filterCategory('all', this)" class="cat-btn active bg-slate-800 text-white text-xs px-3 py-2 rounded-lg font-medium whitespace-nowrap">Tất cả</button>
+          <button onclick="filterCategory('cam', this)" class="cat-btn bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium whitespace-nowrap">Biển Cấm</button>
+          <button onclick="filterCategory('nguyhiem', this)" class="cat-btn bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium whitespace-nowrap">Nguy Hiểm</button>
+          <button onclick="filterCategory('hieulenh', this)" class="cat-btn bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium whitespace-nowrap">Hiệu Lệnh</button>
+          <button onclick="filterCategory('vachke', this)" class="cat-btn bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-medium whitespace-nowrap">Vạch Kẻ</button>
+        </div>
+      </div>
+    </div>
+    <div id="signGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </section>
+
+  <section id="section-scenarios" class="tab-content hidden space-y-6">
+    <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-start gap-3">
+      <i data-lucide="lightbulb" class="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5"></i>
+      <p class="text-sm text-emerald-800 leading-relaxed">Ghi nhớ nhanh các tình huống thực tế thường gặp giúp bạn tự tin lái xe an toàn và tránh các vi phạm lỗi phổ biến!</p>
+    </div>
+    <div id="scenarioList" class="space-y-4"></div>
+  </section>
+</main>
+
+<div id="apiKeyModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+    <div class="flex items-center justify-between border-b pb-3">
+      <h3 class="font-bold text-slate-800 text-base flex items-center gap-2"><i data-lucide="key" class="w-5 h-5 text-emerald-600"></i> Cấu hình Gemini API Key</h3>
+      <button onclick="toggleApiKeyModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <p class="text-xs text-slate-500 leading-relaxed">Ứng dụng sử dụng <b>Gemini AI Vision</b> để nhận diện biển báo qua ảnh. Lấy key miễn phí tại <b>aistudio.google.com</b> rồi dán vào bên dưới:</p>
+    <div>
+      <label class="block text-xs font-semibold text-slate-700 mb-1">API Key của bạn:</label>
+      <input type="password" id="customApiKeyInput" placeholder="AIzaSy..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-emerald-500">
+    </div>
+    <div class="flex justify-end gap-2 pt-2">
+      <button onclick="clearApiKey()" class="text-xs px-4 py-2.5 rounded-xl text-slate-500 hover:text-slate-700">Xóa key</button>
+      <button onclick="saveApiKey()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-colors">Lưu Cấu Hình</button>
+    </div>
+  </div>
+</div>
+
+<footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
+  <div class="max-w-6xl mx-auto px-4 space-y-2"><p>© 2026 Bạn Đồng Hành Giao Thông Việt Nam. Thiết kế vì sự an toàn của cộng đồng.</p></div>
+</footer>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
