@@ -1,0 +1,8 @@
+body { font-family: 'Plus Jakarta Sans', sans-serif; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.tab-button { color: rgba(255,255,255,0.75); border-color: transparent; }
+.tab-button:hover { color: #ffffff; }
+.tab-button.active { color: #ffffff; border-color: #ffffff; font-weight: 700; }
+.cat-btn.active { background-color: #0f172a; color: #ffffff; }
+#dropZone.dragover { border-color: #10b981; background-color: #ecfdf5; }
